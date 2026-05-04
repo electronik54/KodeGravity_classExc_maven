@@ -1,0 +1,6 @@
+- APIs
+- software arch
+- postman
+- http methods and their content
+- https://openweathermap.org/
+- https://dummy.restapiexample.com/
