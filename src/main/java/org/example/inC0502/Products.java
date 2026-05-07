@@ -3,7 +3,6 @@ package org.example.inC0502;
 import lombok.Getter;
 
 import java.util.Objects;
-import java.util.function.Supplier;
 
 @Getter
 public final class Products {
@@ -57,5 +56,4 @@ public final class Products {
     public int hashCode() {
         return Objects.hash(sku);
     }
-
 }

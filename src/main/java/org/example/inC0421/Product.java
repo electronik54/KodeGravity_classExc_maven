@@ -29,4 +29,5 @@ public class Product {
         return Objects.hash(name, id);
 //        return Objects.hash(name);
     }
+
 }

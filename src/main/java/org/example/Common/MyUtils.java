@@ -19,4 +19,10 @@ public final class MyUtils {
         return BigDecimal.valueOf(number).setScale(decimalPlaces, BigDecimal.ROUND_HALF_UP).doubleValue();
     }
 
+// region FunctionalInterface
+    @FunctionalInterface
+    public interface TriFunction<P1, P2, P3, R> {
+        R apply(P1 t, P2 u, P3 v);
+    }
+// endregion
 }

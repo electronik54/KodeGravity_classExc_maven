@@ -3,6 +3,8 @@ package org.example.inC0502;
 import java.util.*;
 
 import java.util.function.*;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.example.Common.MyUtils;
 
@@ -42,52 +44,80 @@ public class Main {
         String userIn;
 
         while (continueLoop) {
+
+// region defaultProducts
             List<Products> defaultProducts = new LinkedList<>(Arrays.asList(
-                    new Products("Chips", 1261, MyUtils.randomDouble(0.5, 5.0, 2), true, MyUtils.randomInt(0, 100)),
+                    new Products("Chips", 1261, MyUtils.randomDouble(1.5, 5.0, 2), true, MyUtils.randomInt(0, 100)),
                     new Products("Used car", 12363, MyUtils.randomDouble(800, 20000, 2), true, MyUtils.randomInt(0, 100)),
                     new Products("Tent", 1873, MyUtils.randomDouble(89, 300, 2), true, MyUtils.randomInt(0, 100)),
+                    new Products("Laptop", 768324, MyUtils.randomDouble(200, 5000, 2), false, MyUtils.randomInt(0, 100)),
                     new Products("Onion", 1234, MyUtils.randomDouble(.5, 5.0, 2), true, MyUtils.randomInt(0, 100)),
                     new Products("Pasta", 1233, MyUtils.randomDouble(1.0, 4.0, 2), true, MyUtils.randomInt(0, 100)),
-                    new Products("Phone", 768324, MyUtils.randomDouble(200, 1500, 2), false, MyUtils.randomInt(0, 100)),
-                    new Products("Laptop", 768324, MyUtils.randomDouble(200, 5000, 2), false, MyUtils.randomInt(0, 100)),
+                    new Products("Phone", 768324, MyUtils.randomDouble(200, 1500), false, MyUtils.randomInt(0, 100)),
                     new Products("Repair kit", 9832, MyUtils.randomDouble(20, 30, 2), false, MyUtils.randomInt(0, 100)),
-                    new Products("New car", 73476, MyUtils.randomDouble(20000, 150000, 2), false, MyUtils.randomInt(0, 100))
+                    new Products("New car", 73476, MyUtils.randomDouble(20000, 150000), false, MyUtils.randomInt(0, 100)),
+                    new Products("New car", 734761, MyUtils.randomDouble(25000, 50000), false, MyUtils.randomInt(0, 100))
             ));
+// endregion
 
 //                region PRODUCT LAMBDAS
+            Supplier<Stream<Products>> getAvailableProducts = () -> defaultProducts.stream().filter(products -> products.isAvailable());
+
             System.out.println("\nTODO: merge <getProductWithSku> and <getProductWithName> into a <BiFunction>\n");
-            Function<String, Optional<Products>> getProductWithSku = sku -> defaultProducts.stream()
-                    .filter(product -> String.valueOf(product.getSku()).equals(sku))
-                    .findFirst();
-
-            Function<String, Optional<Products>> getProductWithName = name -> defaultProducts.stream()
-                    .filter(product -> product.getName().equalsIgnoreCase(name))
-                    .findFirst();
-
-            Supplier<Products[]> getAvailable = () -> defaultProducts.stream()
-                    .filter(products -> products.isAvailable())
-                    .toArray(Products[]::new);
-
-            BiFunction<Double, Boolean, Optional<Products[]>> getAvailablePriceLimit = (price, isUpper) -> {
-                Products[] match = defaultProducts.stream()
-                        .filter(product -> isUpper ? product.getPrice() >= price : product.getPrice() <= price)
-                        .toArray(Products[]::new);
-
-                if (match.length > 0) return Optional.of(match);
-                return Optional.empty();
+            Function<String, Optional<List<Products>>> getProductWithSku = sku -> {
+                List<Products> matches = getAvailableProducts.get()
+                        .filter(product -> String.valueOf(product.getSku()).equals(sku))
+                        .collect(Collectors.toList());
+                return matches.isEmpty() ? Optional.empty() : Optional.of(matches);
             };
 
-            Function<Products, String> getProductToString = p -> "NAME:" + p.getName() + "(" + p.getStock() + ") | SKU:" + p.getSku() + " | PRICE: $" + p.getPrice();
+            Function<String, Optional<List<Products>>> getProductWithName = name -> {
+                List<Products> matches = getAvailableProducts.get()
+                        .filter(product -> product.getName().equalsIgnoreCase(name))
+                        .collect(Collectors.toList());
+                return matches.isEmpty() ? Optional.empty() : Optional.of(matches);
+            };
+
+            Supplier<Optional<List<Products>>> getProducts = () -> {
+                List<Products> matches = defaultProducts.stream()
+                        .filter(products -> products.isAvailable())
+                        .collect(Collectors.toList());
+                return matches.isEmpty() ? Optional.empty() : Optional.of(matches);
+            };
+
+//            MyUtils.TriFunction<Double, Boolean, Boolean, Optional<Products[]>> getProdsAsPriceLimit = (price, isUpper, isAscending) -> {
+//                Products[] match = getAvailableProducts.get()
+//                        .filter(product -> isUpper ? product.getPrice() >= price : product.getPrice() <= price)
+////                        .sorted((a, b) -> isAscending ? a.compareTo(b) : a.reverseCompareTo(b))
+//                        .sorted( isAscending? Comparator.comparingDouble(p-> p.getPrice()) : Comparator.comparingDouble(Products::getPrice).reversed()) // #0506.2349
+//                        .toArray(Products[]::new);
+//                if (match.length > 0) return Optional.of(match);
+//                return Optional.empty();
+//            };
+            MyUtils.TriFunction<Double, Boolean, Boolean, Optional<List<Products>>> getProdsAsPriceLimit =
+                    (price, isUpper, isAscending) -> {
+
+                        Comparator<Products> byPrice = Comparator.comparingDouble(p -> p.getPrice());
+                        Comparator<Products> cmp = isAscending ? byPrice : byPrice.reversed();
+
+                        List<Products> match = getAvailableProducts.get()
+                                .filter(p -> isUpper ? p.getPrice() >= price : p.getPrice() <= price)
+                                .sorted(cmp)
+                                .collect(Collectors.toList());
+
+                        return match.isEmpty() ? Optional.empty() : Optional.of(match);
+                    };
+
+            Function<Products, String> getProductToString = p -> "SKU:" + p.getSku() + " | NAME:" + p.getName() + "(" + p.getStock() + ") | PRICE: $" + p.getPrice();
 //                endregion
 
             do {
-
                 System.out.println("\nWelcome to the 'We-Got-It-All' general store. Select your operation...");
                 System.out.println("(1) View entire catalogue");//done
                 System.out.println("(2) Find/Update product details by name and/or sku");//done enough
                 System.out.println("(3) Find available product(s) above/below price");//done
                 System.out.println("(4) Remove products under price");
-                System.out.println("(5) View products in ascending/decending order of their price/sku/name/availability");//done
+                System.out.println("(5) View products in ascending/decending order of their price/sku/name");//done
                 System.out.print("(<any other key>) To Exit ::");
 
                 switch (sc.nextLine().charAt(0)) {
@@ -112,7 +142,7 @@ public class Main {
                         do {
                             System.out.print("Press (S)to enter SKU OR (N)to enter name, to find the product:");
                             userIn = String.valueOf(sc.nextLine().charAt(0));
-                            final Products[] selectProd = new Products[1];
+//                            final List<Products> selectProd = Collections.emptyList();
 
                             if (userIn.equalsIgnoreCase("S")) {
                                 do {
@@ -122,7 +152,7 @@ public class Main {
                                         System.out.println("Valid SKU is required. Please try again...");
                                 } while (userIn.isEmpty());
 
-                                Optional<Products> foundProd = getProductWithSku.apply(userIn);
+                                Optional<List<Products>> foundProd = getProductWithSku.apply(userIn);
 //                                final String userInRef = userIn;
 //                                Optional<Products> foundProd = defaultProducts.stream()
 //                                        .filter(product -> String.valueOf(product.getSku()).equals(userInRef))
@@ -131,10 +161,13 @@ public class Main {
                                 if (!foundProd.isPresent()) {
                                     System.out.println("No Product with this SKU found.");
                                     break;
+                                } else {
+                                    System.out.println(foundProd.get().size() + " Product(s) found...");
+                                    foundProd.get().forEach(product -> System.out.println(getProductToString.apply(product)));
                                 }
-                                foundProd.ifPresent(product -> selectProd[0] = foundProd.get());
-                                System.out.println("Product found...");
-                                System.out.println(getProductToString.apply(selectProd[0]));
+//                                foundProd.ifPresent(product -> selectProd[0][0] = foundProd.get());
+//                                System.out.println("Product found...");
+//                                System.out.println(getProductToString.apply(selectProd[0][0]));
 
                             } else if (userIn.equalsIgnoreCase("N")) {
                                 do {
@@ -145,7 +178,7 @@ public class Main {
                                 } while (userIn.isEmpty());
 
 //                                final String userInRef = userIn;
-                                Optional<Products> foundProd = getProductWithName.apply(userIn);
+                                Optional<List<Products>> foundProd = getProductWithName.apply(userIn);
 //                                Optional<Products> foundProd = defaultProducts.stream()
 //                                        .filter(product -> product.getName().equalsIgnoreCase(userInRef))
 //                                        .findFirst();
@@ -153,10 +186,14 @@ public class Main {
                                 if (!foundProd.isPresent()) {
                                     System.out.println("No Product with this name found.");
                                     break;
+                                } else {
+                                    System.out.println(foundProd.get().size() + " Product(s) found...");
+                                    foundProd.get().forEach(product -> {
+                                        System.out.println(getProductToString.apply(product));
+                                    });
                                 }
-                                foundProd.ifPresent(product -> selectProd[0] = foundProd.get());
-                                System.out.println("Product found...");
-                                System.out.println(getProductToString.apply(selectProd[0]));
+//                                foundProd.ifPresent(product -> selectProd = product);
+//                                System.out.println(getProductToString.apply(selectProd[0]));
 
                             } else {
                                 System.out.println("Invalid input.");
@@ -169,43 +206,53 @@ public class Main {
                             }
 
                         } while (userIn.equals("1") || userIn.equals("2"));
-
                         break;
 //                        endregion
 
-//                    region 3.Find available Products above\below price
+//                    region 3.Find available Products above/below price
                     case '3':
                         double price = 0.0;
                         boolean isUpper = false;
+                        boolean isAscending = false;
                         do {
                             try {
-                                System.out.print("\nEnter '<' OR '>' for upper or lower and then the price (eg:<23.99 OR >1.0):");
-                                userIn = sc.nextLine();
+                                System.out.println("\nNOTE:: \n(eg:<23.99a OR >1.0d) where the \n first character is '<'for ascending and '>'for descending \n second is the price \n the last character is 'a' for ascending list or 'd' for descending list");
+                                System.out.print("Enter '<' OR '>' for upper or lower and then the price:");
+                                userIn = sc.nextLine().trim();
 
-                                if (userIn.trim().isEmpty()) throw new NumberFormatException();
+                                if (userIn.trim().isEmpty()) throw new NumberFormatException("Input cannot be empty");
 
-                                if (userIn.charAt(0) == '>') isUpper = true;
-                                else if (userIn.charAt(0) == '<') isUpper = false;
+                                if (userIn.startsWith(">")) isUpper = true;
+                                else if (userIn.startsWith("<")) isUpper = false;
+                                else throw new NumberFormatException("First character is invalid. Use '< or >'");
+
+                                if (userIn.toLowerCase().endsWith("a")) isAscending = true;
+                                else if (userIn.toLowerCase().endsWith("d")) isAscending = false;
                                 else throw new NumberFormatException();
 
-                                price = Double.parseDouble(userIn.substring(1));
+                                price = Double.parseDouble(userIn.substring(1, userIn.length() - 1));
                             } catch (NumberFormatException e) {
                                 System.out.println("Invalid entry. Try again");
                                 userIn = "";
                             }
                         } while (userIn.isEmpty());
 
-                        Optional<Products[]> prods = getAvailablePriceLimit.apply(price, isUpper);
+                        Optional<List<Products>> prods = getProdsAsPriceLimit.apply(price, isUpper, isAscending);
                         if (!prods.isPresent()) System.out.println("No results found");
-                        else for (Products p : prods.get()) System.out.println(getProductToString.apply(p));
+                        else {
+                            System.out.println(prods.get().size() + " result(s) found...");
+                            for (Products p : prods.get()) System.out.println(getProductToString.apply(p));
+                        }
                         break;
 //                    endregion
 
-//                        region 5.GET AVAILABLE
-                    case '6':
-                        Products[] availableProducts = getAvailable.get();
-                        System.out.println("\nAvailable product Catalogue(" + Arrays.stream(availableProducts).count() + ")");
-                        for (Products p : availableProducts) getProductToString.apply(p);
+//                        region 5.GET AVAILABLE products in asc/dec order
+                    case '5':
+                        List<Products> match = getAvailableProducts.get().collect(Collectors.toList());
+
+                        if (!match.isEmpty()) {
+                            match.forEach(product -> System.out.println(getProductToString.apply(product)));
+                        } else System.out.println("No Products to display");
                         break;
 //                        endregion
 
