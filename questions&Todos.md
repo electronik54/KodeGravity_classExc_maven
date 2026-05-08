@@ -7,6 +7,8 @@
 - Optional class
 - ClassLoader
 - contract first approach
+- HTTP response code - [LINK: _mdn__](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Status)
+- 
 
 #### TODO
 - visit : codingbat.com
@@ -31,4 +33,4 @@
 - diamond prob
 - 
 - design pattern > IMP:singleton
-- 
+- HTTP response code (first 5 from series 2xx, 3xx, 4xx) 

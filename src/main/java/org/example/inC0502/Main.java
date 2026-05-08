@@ -2,6 +2,7 @@ package org.example.inC0502;
 
 import java.util.*;
 
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -65,6 +66,8 @@ public class Main {
 //                region PRODUCT LAMBDAS
             Supplier<Stream<Products>> getAvailableProducts = () -> defaultProducts.stream()
                     .filter(products -> products.isAvailable());
+            Supplier<Stream<Products>> getNotAvailableProducts = () -> defaultProducts.stream()
+                    .filter(products -> !products.isAvailable());
 
             System.out.println("\nTODO: merge <getProductWithSku> and <getProductWithName> into a <BiFunction>\n");
             Function<String, Optional<Products>> getProductWithSku = sku -> getAvailableProducts.get()
@@ -81,39 +84,27 @@ public class Main {
                 return matches.isEmpty() ? Optional.empty() : Optional.of(matches);
             };
 
-            Supplier<Optional<List<Products>>> getProducts = () -> {
-                List<Products> matches = defaultProducts.stream()
-                        .filter(products -> products.isAvailable())
+            MyUtils.TriFunction<Double, Boolean, Boolean, Optional<List<Products>>> getProdsAsPriceLimit = (price, isUpper, isAscending) -> {
+                List<Products> match = getAvailableProducts.get()
+                        .filter(p -> isUpper ? p.getPrice() >= price : p.getPrice() <= price)
+                        .sorted(isAscending ?
+                                Comparator.comparingDouble(p -> p.getPrice()) :
+                                Comparator.comparingDouble((Products p) -> p.getPrice()).reversed()) // #0506.2349
                         .collect(Collectors.toList());
-                return matches.isEmpty() ? Optional.empty() : Optional.of(matches);
+                return match.isEmpty() ? Optional.empty() : Optional.of(match);
             };
 
-//            MyUtils.TriFunction<Double, Boolean, Boolean, Optional<Products[]>> getProdsAsPriceLimit = (price, isUpper, isAscending) -> {
-//                Products[] match = getAvailableProducts.get()
-//                        .filter(product -> isUpper ? product.getPrice() >= price : product.getPrice() <= price)
-////                        .sorted((a, b) -> isAscending ? a.compareTo(b) : a.reverseCompareTo(b))
-//                        .sorted(isAscending ?
-//                                Comparator.comparingDouble(p -> p.getPrice()) :
-//                                Comparator.comparingDouble(p -> p.getPrice()).reversed()) // #0506.2349
-//                        .toArray(Products[]::new);
-//                if (match.length > 0) return Optional.of(match);
-//                return Optional.empty();
-//            };
-            MyUtils.TriFunction<Double, Boolean, Boolean, Optional<List<Products>>> getProdsAsPriceLimit =
-                    (price, isUpper, isAscending) -> {
-
-                        Comparator<Products> byPrice = Comparator.comparingDouble(p -> p.getPrice());
-                        Comparator<Products> cmp = isAscending ? byPrice : byPrice.reversed();
-
-                        List<Products> match = getAvailableProducts.get()
-                                .filter(p -> isUpper ? p.getPrice() >= price : p.getPrice() <= price)
-                                .sorted(cmp)
-                                .collect(Collectors.toList());
-
-                        return match.isEmpty() ? Optional.empty() : Optional.of(match);
-                    };
-
             Function<Products, String> getProductToString = p -> "SKU:" + p.getSku() + " | NAME:" + p.getName() + "(" + p.getStock() + ") | PRICE: $" + p.getPrice();
+
+            Function<Double, Optional<List<Products>>> setNewPrice = (risePrice) -> {
+                List<Products> newProducts = getAvailableProducts.get()
+                        .map(p -> {
+                            p.setPrice(MyUtils.roundInt((p.getPrice() + risePrice), 2));
+                            return p;
+                        }).collect(Collectors.toList());
+
+                return newProducts.isEmpty() ? Optional.empty() : Optional.of(newProducts);
+            };
 //                endregion
 
             do {
@@ -121,11 +112,15 @@ public class Main {
                 System.out.println("(1) View customer catalogue");//done
                 System.out.println("(2) Find/Update product details by name and/or sku");//done enough
                 System.out.println("(3) Find available product(s) above/below price");//done
-                System.out.println("(4) Remove products under price");
+                System.out.println("(4) Check if SKU exists");
                 System.out.println("(5) View products in ascending/decending order of their price/sku/name");//done
                 System.out.println("(6) Add Product");//done
+                System.out.println("(7) Raise the price of available products by value");//done
                 System.out.print("(<any other key>) To Exit ::");
 
+                double price = 0.0;
+                boolean isUpper = false;
+                boolean isAscending = false;
                 switch (sc.nextLine().charAt(0)) {
 
 //                        region 1.GET ALL PRODUCT LIST
@@ -133,12 +128,9 @@ public class Main {
                         System.out.println();
                         System.out.println("--CATALOGUE--");
 
-                        Function<Boolean, String> checkAvail = bool -> {
-                            if (bool) return "Available";
-                            return "Not Available";
-                        };
-
-                        defaultProducts.forEach(product -> System.out.println(getProductToString.apply(product)));
+                        defaultProducts.forEach(product -> {
+                            if(product.isAvailable()) System.out.println(getProductToString.apply(product));
+                        });
                         break;
 //                        endregion
 
@@ -213,9 +205,6 @@ public class Main {
 
 //                    region 3.Find available Products above/below price
                     case '3':
-                        double price = 0.0;
-                        boolean isUpper = false;
-                        boolean isAscending = false;
                         do {
                             try {
                                 System.out.println("\nNOTE:: \n(eg:<23.99a OR >1.0d) where the \n first character is '<'for ascending and '>'for descending \n second is the price \n the last character is 'a' for ascending list or 'd' for descending list");
@@ -240,11 +229,10 @@ public class Main {
                         } while (userIn.isEmpty());
 
                         Optional<List<Products>> prods = getProdsAsPriceLimit.apply(price, isUpper, isAscending);
-                        if (!prods.isPresent()) System.out.println("No results found");
-                        else {
+                        if (prods.isPresent()) {
                             System.out.println(prods.get().size() + " result(s) found...");
                             for (Products p : prods.get()) System.out.println(getProductToString.apply(p));
-                        }
+                        } else System.out.println("No results found");
                         break;
 //                    endregion
 
@@ -258,7 +246,7 @@ public class Main {
                         break;
 //                        endregion
 
-                    case'4':
+                    case '4':
                         System.out.println("--NOT IMPLEMENTED--");
                         break;
 
@@ -306,7 +294,7 @@ public class Main {
                                     newPrice = Double.parseDouble(userIn);
                                 } catch (NumberFormatException e) {
                                     System.out.println("Please provide a valid price.");
-                                    userIn="";
+                                    userIn = "";
                                 }
                             } while (userIn.isEmpty());
 
@@ -317,7 +305,7 @@ public class Main {
                                     newStock = Integer.parseInt(userIn);
                                 } catch (NumberFormatException e) {
                                     System.out.println("Please provide a valid stock amount.");
-                                    userIn="";
+                                    userIn = "";
                                 }
                             } while (userIn.isEmpty());
 
@@ -325,18 +313,40 @@ public class Main {
 
                             System.out.print("\n-NAME:" + newName + "\n-PRICE:$" + newPrice + "\n-STOCK:" + newStock + "\n-Available:YES\nPLEASE CONFIRM ABOVE DETAILS... (Y)To add product | (<any other key>):start over :");
 
-                        }while(!sc.nextLine().toLowerCase().startsWith("y"));
+                        } while (!sc.nextLine().toLowerCase().startsWith("y"));
 
                         defaultProducts.add(new Products(newName, newSku, newPrice, true, newStock));
 
                         Optional<Products> newProd = getProductWithSku.apply(String.valueOf(newSku));
-                        if(newProd.isPresent()) {
-                            System.out.println("Product added | " + getProductToString.apply(newProd.get()) );
-                        }else{
+                        if (newProd.isPresent()) {
+                            System.out.println("Product added | " + getProductToString.apply(newProd.get()));
+                        } else {
                             System.out.println("Something went wrong... Unable to add product");
                         }
                         break;
                     // endregion
+
+// region 7.Update Price for all Products
+                    case '7':
+                        do {
+                            System.out.print("\nProvide the raise-by value:$");
+                            newPrice=0;
+                            try {
+                                userIn = sc.nextLine().trim();
+                                newPrice = Double.parseDouble(userIn);
+                            } catch (NumberFormatException e) {
+                                System.out.println("Please provide a valid price.");
+                                userIn = "";
+                            }
+                        } while (userIn.isEmpty());
+
+                        Optional<List<Products>> newProds = setNewPrice.apply(newPrice);
+                        if(newProds.isPresent()){
+                            System.out.println("-UPDATED PRICE-");
+                            newProds.get().forEach(product ->  System.out.println(getProductToString.apply(product)));
+                        }
+                        break;
+// endregion
 
                     default:
                         continueLoop = false;

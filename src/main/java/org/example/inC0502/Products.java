@@ -2,6 +2,7 @@ package org.example.inC0502;
 
 import lombok.Getter;
 
+import java.util.Comparator;
 import java.util.Objects;
 
 @Getter
@@ -11,7 +12,7 @@ public final class Products {
     private final int sku;
     private double price;
     private boolean available;
-    private int stock = 0;
+    private int stock;
 
     public Products(String name, int sku, double price, boolean available, int stock) {
         this.name = name;
@@ -31,7 +32,7 @@ public final class Products {
         this.name = name;
     }
 
-    public void setPrice(int price) {
+    public void setPrice(double price) {
         if (price < 0) throw new IllegalArgumentException("Price cannot be less than 0");
         this.price = price;
     }
