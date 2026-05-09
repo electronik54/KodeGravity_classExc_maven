@@ -8,6 +8,7 @@
 - ClassLoader
 - contract first approach
 - HTTP response code - [LINK: _mdn__](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Status)
+- Marker interface
 - 
 
 #### TODO
@@ -28,9 +29,8 @@
 - Streams
 - Lambdas
 - features of Java 1.8 _-apr25_
-- built-in functional interface
-    - https://docs.oracle.com/javase/8/docs/api/java/util/function/package-summary.html
+- built-in functional interface [link](https://docs.oracle.com/javase/8/docs/api/java/util/function/package-summary.html)
 - diamond prob
-- 
+- method reference
 - design pattern > IMP:singleton
 - HTTP response code (first 5 from series 2xx, 3xx, 4xx) 
